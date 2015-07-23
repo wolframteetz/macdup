@@ -1,12 +1,13 @@
 # macdup
 #
 # VBaddict Dossier Uploader for OSX
-# see https://github.com/wolframteetz/worldoftanks/blob/master/README.md
+#
+# Please edit the three variables below to match your account
 #
 
-VB_USER=userName
-VB_TOKEN=userToken
-VB_SERVER=userServer
+VB_USER=****YOUR_VBADDICT_USER_NAME_HERE****
+VB_TOKEN=****YOUR_VBADDICT_TOKEN_HERE****
+VB_SERVER=eu
 
 clear
 echo "Dossier Uploader for vBAddict"
