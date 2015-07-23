@@ -4,9 +4,9 @@
 # see https://github.com/wolframteetz/worldoftanks/blob/master/README.md
 #
 
-VB_TOKEN=c44PS3QCemfcJFgYpWWB
-VB_USER=lotusthemotus
-VB_SERVER=eu
+VB_USER=userName
+VB_TOKEN=userToken
+VB_SERVER=userServer
 
 clear
 echo "Dossier Uploader for vBAddict"
