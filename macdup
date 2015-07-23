@@ -3,6 +3,7 @@
 # VBaddict Dossier Uploader for OSX
 #
 # Please edit the three variables below to match your account
+# You can find/generate your token here : http://www.vbaddict.net/token.php
 #
 
 VB_USER=****YOUR_VBADDICT_USER_NAME_HERE****
