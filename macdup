@@ -16,28 +16,43 @@ VB_SERVER=eu
 clear
 echo "Dossier Uploader for vBAddict"
 echo "https://github.com/wolframteetz/worldoftanks/blob/master/README.md"
-echo 
+echo
+
+# upload a file an parse the status
+uploadWOTFile(){
+    fileType=$1
+    url=$2
+
+    uploadFile=`find . -name "$fileType" -mmin -1`
+    numberOfFiles=`echo $uploadFile | grep -v "^$" | wc -l`
+    if [ $numberOfFiles -ge 1 ]; then
+ 	echo $numberOfFiles
+	message=`curl -s --upload-file "$uploadFile" "$url"`
+	parsedStatus=`echo $message | jq ".message" 2>/dev/null`
+	if [ $? -eq 0 ] ; then
+	    echo $parsedStatus
+	else
+	    echo "Parsing message returned from the server failed. Received:"
+	    echo $message | sed "s/\(upload_file\/.*\/\)\(.*\)\/json/\1TOKEN\/json/"
+	fi
+    fi
+}
 
 while true
-do 
+do
+    # upload the dossier directory
     cd ~/Library/Application\ Support/World\ of\ Tanks/Bottles/worldoftanks/drive_c/users/crossover/Application\ Data/Wargaming.net/WorldOfTanks/dossier_cache
-    if [ -n "$(find . -name "*.dat" -mmin -1)" ]; then 
-    echo "Number of new dossier files"
-    find . -name "*.dat" -mmin -1 | wc -l
-    find . -name "*.dat" -mmin -1 -exec sh -c "curl -s --upload-file {} http://carius.vbaddict.net:82/upload_file/dossier/$VB_SERVER/$VB_USER/$VB_TOKEN/json | jq \".message\" " \; 
-    fi
+    echo "Number of dossier files"
+    uploadWOTFile '*.dat' "http://carius.vbaddict.net:82/upload_file/dossier/$VB_SERVER/$VB_USER/$VB_TOKEN/json"
+
     cd ~/Library/Application\ Support/World\ of\ Tanks/Bottles/worldoftanks/drive_c/users/crossover/Application\ Data/Wargaming.net/WorldOfTanks/battle_results
-    if [ -n "$(find . -name "*.dat" -mmin -1)" ]; then
-    echo "Number of new battle result files"
-    find . -name "*.dat" -mmin -1 | wc -l
-    find . -name "*.dat" -mmin -1 -exec sh -c "curl -s --upload-file {} http://carius.vbaddict.net:82/upload_file/battleresult/$VB_SERVER/$VB_USER/$VB_TOKEN/json | jq \".message\" " \; 
-    fi
+    echo "Number of battle results files"
+    uploadWOTFile '*.dat' "http://carius.vbaddict.net:82/upload_file/battleresult/$VB_SERVER/$VB_USER/$VB_TOKEN/json"
+
     cd ~/Documents/World_of_Tanks/replays
-    if [ -n "$(find . -name "replay*.wotreplay" -mmin -1)" ]; then
-    echo "Uploading replays"
-    find . -name "replay*.wotreplay" -mmin -1 | wc -l
-    find . -name "replay*.wotreplay" -mmin -1 -exec sh -c "curl -s --upload-file {} http://carius.vbaddict.net:82/upload_file/replay/$VB_SERVER/$VB_USER/$VB_TOKEN/json | jq \".message\" " \;
-    fi
+    echo "Number of replay"
+    uploadWOTFile "replay*.wotreplay" "http://carius.vbaddict.net:82/upload_file/replay/$VB_SERVER/$VB_USER/$VB_TOKEN/json"
+
     echo -n "Next check for new dossier files at "
     date -v +1M
     sleep 60
