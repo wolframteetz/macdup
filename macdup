@@ -49,7 +49,7 @@ do
     echo "Number of battle results files"
     uploadWOTFile '*.dat' "http://carius.vbaddict.net:82/upload_file/battleresult/$VB_SERVER/$VB_USER/$VB_TOKEN/json"
 
-    cd ~/Documents/World_of_Tanks/replays
+    cd ~/Documents/WoT/replays
     echo "Number of replay"
     uploadWOTFile "replay*.wotreplay" "http://carius.vbaddict.net:82/upload_file/replay/$VB_SERVER/$VB_USER/$VB_TOKEN/json"
 
