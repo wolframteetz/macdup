@@ -9,50 +9,133 @@
 # You can find/generate your token here : http://www.vbaddict.net/token.php
 #
 
+# WoT account name seems to be OK for this, at least if you don't have a token
 VB_USER=****YOUR_VBADDICT_USER_NAME_HERE****
+
+# You can set this to '-' if you don't have a token
 VB_TOKEN=****YOUR_VBADDICT_TOKEN_HERE****
-VB_SERVER=eu
+
+# One of: eu, na, ru, net, asia, kr, vn, cn
+VB_SERVER=****YOUR_WOT_SERVER_REGION_HERE****
+
+# Save some line-length below
+API='http://carius.vbaddict.net:82/upload_file'
+
+# Allow to catch-up by uploading existing files
+# ./macdup [all|dall|ball|rall]
+if [ X"$1" == "Xall" ]
+then
+        # Upload all historical files of all types
+	dTime=''
+        bTime=''
+        rTime=''
+        oneLoop='yes'
+elif [ X"$1" == "Xdall" ]
+then
+        # Upload historical dossier, recent battle/replay reports
+        dTime=''
+        bTime='-mmin -1'
+        rTime='-mmin -1'
+        oneLoop='yes'
+elif [ X"$1" == "Xball" ]
+then
+        # Upload historical battle reports, recent dossier/replays
+        dTime='-mmin -1'
+        bTime=''
+        rTime='-mmin -1'
+        oneLoop='yes'
+elif [ X"$1" == "Xrall" ]
+then
+        # Upload historical replays, recent dossier/battle reports
+        dTime='-mmin -1'
+        bTime='-mmin -1'
+        rTime=''
+        oneLoop='yes'
+else
+        # We're in normal 1-minute polling mode
+	dTime='-mmin -1'
+	bTime='-mmin -1'
+	rTime='-mmin -1'
+        oneLoop='no'
+fi
 
 clear
 echo "Dossier Uploader for vBAddict"
 echo "https://github.com/wolframteetz/worldoftanks/blob/master/README.md"
 echo
 
+# Do we have jq?
+jqPath=`which jq`
+if [ $? -eq 0 ]
+then
+    haveJq='yes'
+else
+    haveJq='no'
+    echo "jq was not detected in $PATH, will output full JSON response to upload"
+fi
+
 # upload a file an parse the status
 uploadWOTFile(){
     fileType=$1
     url=$2
+    time=$3
 
-    uploadFile=`find . -name "$fileType" -mmin -1`
-    numberOfFiles=`echo $uploadFile | grep -v "^$" | wc -l`
+    # Writing to/reading from file seems more reliable for cross-platform
+    find . -name "$fileType" $time >uploadFile
+    numberOfFiles=`cat uploadFile | grep -v "^$" | wc -l`
     if [ $numberOfFiles -ge 1 ]; then
- 	echo $numberOfFiles
-	message=`curl -s --upload-file "$uploadFile" "$url"`
-	parsedStatus=`echo $message | jq ".message" 2>/dev/null`
-	if [ $? -eq 0 ] ; then
-	    echo $parsedStatus
-	else
-	    echo "Parsing message returned from the server failed. Received:"
-	    echo $message | sed "s/\(upload_file\/.*\/\)\(.*\)\/json/\1TOKEN\/json/"
-	fi
+        echo $numberOfFiles
+        for i in `cat uploadFile`
+        do
+            message=`curl -s --upload-file "$i" "$url"`
+            
+            if [ X"$haveJq" == "Xyes" ]
+            then
+                parsedStatus=`echo $message | jq ".message" 2>/dev/null`
+                if [ $? -eq 0 ] ; then
+                    echo $parsedStatus
+                else
+                    echo "Parsing message returned from the server failed. Received:"
+                    echo $message | sed "s/\(upload_file\/.*\/\)\(.*\)\/json/\1TOKEN\/json/"
+                fi
+            else
+                echo "No jq, JSON response is:"
+                echo $message | sed "s/\(upload_file\/.*\/\)\(.*\)\/json/\1TOKEN\/json/"
+            fi
+        done
+        # Clean up the temp file, if we created it
+        if [ -f uploadFile ]
+        then
+            rm uploadFile
+        fi
     fi
 }
 
 while true
 do
     # upload the dossier directory
+    # uploadWOTFile <FILE GLOB> <API URL> <FILE FIND TIME PERIOD>
     cd ~/Library/Application\ Support/World\ of\ Tanks/Bottles/worldoftanks/drive_c/users/crossover/Application\ Data/Wargaming.net/WorldOfTanks/dossier_cache
     echo "Number of dossier files"
-    uploadWOTFile '*.dat' "http://carius.vbaddict.net:82/upload_file/dossier/$VB_SERVER/$VB_USER/$VB_TOKEN/json"
+    uploadWOTFile '*.dat' "$API/dossier/$VB_SERVER/$VB_USER/$VB_TOKEN/json" "$dTime"
 
     cd ~/Library/Application\ Support/World\ of\ Tanks/Bottles/worldoftanks/drive_c/users/crossover/Application\ Data/Wargaming.net/WorldOfTanks/battle_results
     echo "Number of battle results files"
-    uploadWOTFile '*.dat' "http://carius.vbaddict.net:82/upload_file/battleresult/$VB_SERVER/$VB_USER/$VB_TOKEN/json"
+    uploadWOTFile '*.dat' "$API/battleresult/$VB_SERVER/$VB_USER/$VB_TOKEN/json" "$bTime"
 
     cd ~/Documents/WoT/replays
     echo "Number of replay"
-    uploadWOTFile "replay*.wotreplay" "http://carius.vbaddict.net:82/upload_file/replay/$VB_SERVER/$VB_USER/$VB_TOKEN/json"
+    # If you're saving all replays, they have a different prefix
+    uploadWOTFile "*.wotreplay" "$API/replay/$VB_SERVER/$VB_USER/$VB_TOKEN/json" "$rTime"
 
+    # If we're uploading historical files, we don't want to do that over and over
+    if [ X"$oneLoop" == "Xyes" ]
+    then
+        echo "Finished uploading historical files, exiting now"
+        exit
+    fi
+
+    # If we made it here, we're in normal 1-minute mode
     echo -n "Next check for new dossier files at "
     date -v +1M
     sleep 60
